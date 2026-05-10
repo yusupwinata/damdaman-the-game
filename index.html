@@ -70,6 +70,11 @@
         /* Player indicator glows */
         .glow-p1 { box-shadow: 0 0 20px #3b82f6; border: 4px solid #3b82f6; }
         .glow-p2 { box-shadow: 0 0 20px #ef4444; border: 4px solid #ef4444; }
+
+        /* Victory modal pop animation */
+        .modal-pop {
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -163,6 +168,38 @@
 
     </div>
 
+    <!-- Victory Pop Up Overlay -->
+    <div id="victory-screen" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl text-center transform scale-0 modal-pop border-8 border-yellow-300 relative overflow-hidden" id="victory-modal">
+            <!-- Decorative stars background inside modal -->
+            <div class="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-200 via-transparent to-transparent"></div>
+            
+            <h2 class="text-4xl md:text-5xl font-extrabold mb-2" id="victory-title">🎉 PEMENANG! 🎉</h2>
+            <p class="text-gray-500 font-semibold mb-2">Selamat kepada</p>
+            <h3 class="text-4xl md:text-5xl font-black mb-8 bounce-anim" id="victory-name">Pemain 1</h3>
+            
+            <div class="flex justify-center gap-6 md:gap-12 mb-8">
+                <div class="bg-blue-50 border-4 border-blue-200 p-4 rounded-2xl w-28 md:w-32 shadow-inner">
+                    <p class="text-sm font-bold text-blue-800 mb-1">Sisa Pemain 1</p>
+                    <p class="text-4xl font-bold text-blue-600" id="victory-p1-score">10</p>
+                </div>
+                <div class="bg-red-50 border-4 border-red-200 p-4 rounded-2xl w-28 md:w-32 shadow-inner">
+                    <p class="text-sm font-bold text-red-800 mb-1">Sisa Pemain 2</p>
+                    <p class="text-4xl font-bold text-red-600" id="victory-p2-score">0</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-col md:flex-row justify-center gap-4 relative z-10">
+                <button onclick="restartGame()" class="btn bg-green-500 hover:bg-green-400 text-white text-xl font-bold py-4 px-8 rounded-2xl border-b-4 border-green-700 shadow-lg flex-1">
+                    🔄 Main Lagi
+                </button>
+                <button onclick="stopGame()" class="btn bg-gray-500 hover:bg-gray-400 text-white text-xl font-bold py-4 px-8 rounded-2xl border-b-4 border-gray-700 shadow-lg flex-1">
+                    🏠 Menu Utama
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- Audio Engine (Web Audio API) ---
         let audioCtx;
@@ -240,9 +277,24 @@
                 }
             },
             win: () => {
-                playTone(400, 0.2, 0.2);
-                setTimeout(() => playTone(500, 0.2, 0.2), 200);
-                setTimeout(() => playTone(600, 0.4, 0.2), 400);
+                // Fanfare Sequence (Terompet kemenangan bangga)
+                playTone(261.63, 0.15, 0.3, 'square'); // C4
+                setTimeout(() => playTone(329.63, 0.15, 0.3, 'square'), 150); // E4
+                setTimeout(() => playTone(392.00, 0.15, 0.3, 'square'), 300); // G4
+                setTimeout(() => playTone(523.25, 0.4, 0.3, 'square'), 450); // C5 sustained
+                
+                // Background chord for grand feel
+                setTimeout(() => playTone(261.63, 0.6, 0.2, 'sine'), 450); 
+                setTimeout(() => playTone(329.63, 0.6, 0.2, 'sine'), 450);
+
+                // Create festive fireworks explosions on canvas
+                const w = canvas.width / (window.devicePixelRatio || 1);
+                const h = canvas.height / (window.devicePixelRatio || 1);
+                for(let i = 0; i < 8; i++) {
+                    setTimeout(() => {
+                        createExplosion(w/2 + (Math.random()-0.5)*300, h/2 + (Math.random()-0.5)*300, 3);
+                    }, i * 150);
+                }
             }
         };
 
@@ -258,6 +310,7 @@
         let possibleMoves = [];
         let mustContinueJumpPiece = null; // Used for multi-jumps
         let isAnimating = false;
+        let isGameOver = false; // Add game over state
         let gameLoopId;
 
         // Visual Effects Variables
@@ -295,12 +348,18 @@
 
         // Particle Explosion System
         function createExplosion(x, y, player) {
-            const isP1 = player === 1;
-            const baseColor = isP1 ? [14, 165, 233] : [255, 0, 0]; // RGB color for particles
+            let baseColor;
+            if (player === 1) baseColor = [14, 165, 233]; // Blue
+            else if (player === 2) baseColor = [255, 0, 0]; // Red
+            else {
+                // Festive random color for win (yellow, green, pink, etc)
+                const colors = [[253,224,71], [74,222,128], [244,114,182], [167,139,250]];
+                baseColor = colors[Math.floor(Math.random() * colors.length)];
+            }
             
-            for (let i = 0; i < 30; i++) {
-                // Mix of main color and greyish smoke
-                const isSmoke = Math.random() > 0.5;
+            for (let i = 0; i < (player === 3 ? 50 : 30); i++) {
+                // Mix of main color and greyish smoke (if not winning firework)
+                const isSmoke = player !== 3 && Math.random() > 0.5;
                 const r = isSmoke ? 200 + Math.random() * 55 : baseColor[0];
                 const g = isSmoke ? 200 + Math.random() * 55 : baseColor[1];
                 const b = isSmoke ? 200 + Math.random() * 55 : baseColor[2];
@@ -308,12 +367,12 @@
                 particles.push({
                     x: x,
                     y: y,
-                    vx: (Math.random() - 0.5) * 12,
-                    vy: (Math.random() - 0.5) * 12 - 2, // Slight upward drift
+                    vx: (Math.random() - 0.5) * (player === 3 ? 20 : 12),
+                    vy: (Math.random() - 0.5) * (player === 3 ? 20 : 12) - (player===3?0:2), 
                     life: 1.0,
-                    decay: Math.random() * 0.04 + 0.02,
+                    decay: Math.random() * 0.03 + 0.015,
                     color: `rgb(${r}, ${g}, ${b})`,
-                    size: Math.random() * 12 + 4
+                    size: Math.random() * (player === 3 ? 16 : 12) + 4
                 });
             }
         }
@@ -338,6 +397,7 @@
             selectedPiece = null;
             mustContinueJumpPiece = null;
             isAnimating = false;
+            isGameOver = false;
             particles = [];
             animatingPiece = null;
             updateUI();
@@ -348,8 +408,24 @@
             renderLoop();
         }
 
+        function restartGame() {
+            // Sembunyikan modal kemenangan dengan animasi shrink
+            document.getElementById('victory-modal').classList.replace('scale-100', 'scale-0');
+            setTimeout(() => {
+                document.getElementById('victory-screen').classList.replace('flex', 'hidden');
+                startGame(gameMode);
+            }, 300);
+        }
+
         function stopGame() {
             if(gameLoopId) cancelAnimationFrame(gameLoopId);
+            
+            // Sembunyikan jika victory modal sedang terbuka
+            document.getElementById('victory-modal').classList.replace('scale-100', 'scale-0');
+            setTimeout(() => {
+                document.getElementById('victory-screen').classList.replace('flex', 'hidden');
+            }, 300);
+
             showScreen('menu-screen');
         }
 
@@ -412,7 +488,6 @@
                     if (dc === 0 && dr === 1) connected = true; // Vertical line
                     
                     // Diagonal lines ONLY cross at nodes where (col + row) is even
-                    // This mathematically generates the perfect Alquerque diamond patterns
                     if (dc === 1 && dr === 1 && ((n1.c + n1.r) % 2 === 0)) {
                         connected = true;
                     }
@@ -428,10 +503,7 @@
             let pieceId = 0;
             nodes.forEach(n => {
                 let p = 0;
-                // Pemain 1 (Blue) takes columns 0, 1, 2, and 3
                 if (n.c <= 3) p = 1;
-                // Pemain 2 (Red) takes columns 5, 6, 7, and 8
-                // Column 4 (tengah) dibiarkan kosong sepenuhnya
                 else if (n.c >= 5) p = 2;
 
                 if (p > 0) {
@@ -449,7 +521,6 @@
         }
 
         function getNodeCoords(c, r) {
-            // Lebar 9 kolom, tinggi 5 baris
             const padding = Math.min(canvas.width, canvas.height) / (window.devicePixelRatio * 10);
             const width = canvas.width / (window.devicePixelRatio || 1);
             const height = canvas.height / (window.devicePixelRatio || 1);
@@ -485,10 +556,8 @@
             node.neighbors.forEach(nid => {
                 const adjPiece = getPieceAt(nid);
                 if (!adjPiece) {
-                    // Jalan biasa
                     moves.push({ type: 'normal', target: nid });
                 } else if (adjPiece.player !== piece.player) {
-                    // Cek kelurusan garis untuk melompat/memakan
                     const adjNode = nodes.find(n => n.id === nid);
                     const dc = adjNode.c - node.c;
                     const dr = adjNode.r - node.r;
@@ -498,7 +567,6 @@
                     
                     const jumpNode = nodes.find(n => n.c === jumpC && n.r === jumpR);
                     
-                    // Pastikan node tujuan ada, terhubung ke bidak yang dilompati, dan kosong
                     if (jumpNode && adjNode.neighbors.includes(jumpNode.id) && !getPieceAt(jumpNode.id)) {
                         moves.push({ type: 'capture', target: jumpNode.id, captureTarget: nid });
                     }
@@ -519,14 +587,13 @@
         }
 
         canvas.addEventListener('pointerdown', (e) => {
-            if (isAnimating) return;
+            if (isAnimating || isGameOver) return;
             if (gameMode === 'bot' && currentPlayer === 2) return; 
 
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            // Cari radius klik dinamis
             const cellW = (canvas.width / (window.devicePixelRatio || 1)) / 8;
             let minClickDist = Math.max(20, cellW * 0.4); 
             let clickedNode = null;
@@ -544,7 +611,6 @@
 
             const clickedPiece = getPieceAt(clickedNode.id);
 
-            // Jika sedang dalam rantai makan
             if (mustContinueJumpPiece) {
                 if (clickedPiece === mustContinueJumpPiece) return; 
                 
@@ -579,7 +645,6 @@
                     
                     const guiltyPieceIds = [...new Set(allCaps.map(c => c.piece.id))];
                     
-                    // Create explosion at the pieces being punished
                     pieces.forEach(p => {
                         if (guiltyPieceIds.includes(p.id)) {
                             createExplosion(p.visualX, p.visualY, p.player);
@@ -598,7 +663,7 @@
 
         function executeMoveAnimation(piece, targetNode, moveDetails, wasDamPunished) {
             isAnimating = true;
-            animatingPiece = piece; // Set hand animation target
+            animatingPiece = piece; 
             const targetCoords = getNodeCoords(targetNode.c, targetNode.r);
             
             if (moveDetails.type === 'capture') SFX.capture();
@@ -607,7 +672,7 @@
             const startTime = performance.now();
             const startX = piece.visualX;
             const startY = piece.visualY;
-            const duration = 250; // Slightly slower for better hand visual
+            const duration = 250; 
 
             function animate(time) {
                 let progress = (time - startTime) / duration;
@@ -628,7 +693,7 @@
         function finalizeMove(piece, targetNode, moveDetails, wasDamPunished) {
             piece.nodeId = targetNode.id;
             selectedPiece = null;
-            animatingPiece = null; // Remove hand animation
+            animatingPiece = null; 
             possibleMoves = [];
 
             if (moveDetails.type === 'capture') {
@@ -638,7 +703,6 @@
                 }
                 pieces = pieces.filter(p => p.nodeId !== moveDetails.captureTarget);
                 
-                // Cek makan berantai (Multi-jump)
                 const nextMoves = getValidMoves(piece);
                 const nextCaptures = nextMoves.filter(m => m.type === 'capture');
                 
@@ -694,13 +758,44 @@
         }
 
         function handleWin(winnerPlayer) {
-            SFX.win();
-            const winnerName = winnerPlayer === 1 ? "Pemain 1" : (gameMode === 'bot' ? "Bot" : "Pemain 2");
-            showToast(`🎉 ${winnerName} MENANG! 🎉`, 5000);
+            isGameOver = true;
             updateUI();
+            SFX.win(); // Mainkan efek terompet perayaan & fireworks
+
+            const winnerNameStr = winnerPlayer === 1 ? "Pemain 1" : (gameMode === 'bot' ? "Bot Ganas" : "Pemain 2");
+            
+            // Konfigurasi isi pop-up kemenangan
+            const p1Count = pieces.filter(p => p.player === 1).length;
+            const p2Count = pieces.filter(p => p.player === 2).length;
+            
+            document.getElementById('victory-p1-score').innerText = p1Count;
+            document.getElementById('victory-p2-score').innerText = p2Count;
+            
+            const victoryNameEl = document.getElementById('victory-name');
+            const victoryTitleEl = document.getElementById('victory-title');
+            
+            // Set style nama berdasarkan siapa pemenangnya
+            victoryNameEl.innerText = winnerNameStr;
+            if (winnerPlayer === 1) {
+                victoryNameEl.className = "text-4xl md:text-5xl font-black mb-8 bounce-anim text-blue-600";
+                victoryTitleEl.className = "text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400 drop-shadow-md";
+            } else {
+                victoryNameEl.className = "text-4xl md:text-5xl font-black mb-8 bounce-anim text-red-600";
+                victoryTitleEl.className = "text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400 drop-shadow-md";
+            }
+
+            // Tampilkan Modal
+            const victoryScreen = document.getElementById('victory-screen');
+            const victoryModal = document.getElementById('victory-modal');
+            
+            victoryScreen.classList.remove('hidden');
+            victoryScreen.classList.add('flex');
+            
+            // Animasi membesar/muncul
             setTimeout(() => {
-                stopGame();
-            }, 5000);
+                victoryModal.classList.remove('scale-0');
+                victoryModal.classList.add('scale-100');
+            }, 50);
         }
 
         function updateUI() {
@@ -713,17 +808,20 @@
             const p1Profile = document.getElementById('p1-profile');
             const p2Profile = document.getElementById('p2-profile');
 
-            if (currentPlayer === 1) {
+            if (currentPlayer === 1 && !isGameOver) {
                 p1Profile.classList.add('glow-p1');
                 p2Profile.classList.remove('glow-p2');
-            } else {
+            } else if (currentPlayer === 2 && !isGameOver) {
                 p2Profile.classList.add('glow-p2');
                 p1Profile.classList.remove('glow-p1');
+            } else {
+                p1Profile.classList.remove('glow-p1');
+                p2Profile.classList.remove('glow-p2');
             }
         }
 
         function playBot() {
-            if (currentPlayer !== 2 || isAnimating) return;
+            if (currentPlayer !== 2 || isAnimating || isGameOver) return;
 
             let pieceToMove = null;
             let moveToMake = null;
@@ -814,7 +912,7 @@
             });
 
             // Draw Highlights
-            if (possibleMoves.length > 0 && selectedPiece) {
+            if (possibleMoves.length > 0 && selectedPiece && !isGameOver) {
                 possibleMoves.forEach(m => {
                     const tNode = nodes.find(n => n.id === m.target);
                     const pos = getNodeCoords(tNode.c, tNode.r);
@@ -837,11 +935,11 @@
                 const x = p.visualX;
                 const y = p.visualY;
 
-                let isGlowingTurn = !selectedPiece && p.player === currentPlayer && p !== mustContinueJumpPiece;
+                let isGlowingTurn = !selectedPiece && p.player === currentPlayer && p !== mustContinueJumpPiece && !isGameOver;
                 let pulse = (Math.sin(Date.now() / 150) + 1) / 2; // Normalisasi ke 0.0 - 1.0
 
                 // Tambahkan Ring/Halo fisik di belakang bidak
-                if (p === mustContinueJumpPiece) {
+                if (p === mustContinueJumpPiece && !isGameOver) {
                     // Cincin ganda berwarna oranye/kuning untuk bidak "MAKAN LAGI"
                     ctx.shadowBlur = 0;
                     ctx.shadowOffsetY = 0;
@@ -869,11 +967,11 @@
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 0;
 
-                if (p === selectedPiece) {
+                if (p === selectedPiece && !isGameOver) {
                     ctx.shadowColor = p.player === 1 ? '#7dd3fc' : '#fca5a5';
                     ctx.shadowBlur = 30;
                     ctx.shadowOffsetY = 8; // Float effect for selected piece
-                } else if (p === mustContinueJumpPiece) {
+                } else if (p === mustContinueJumpPiece && !isGameOver) {
                     ctx.shadowColor = '#fde047';
                     ctx.shadowBlur = 25 + pulse * 15;
                 } else if (isGlowingTurn) {
@@ -941,7 +1039,7 @@
             ctx.globalAlpha = 1.0; // Reset global alpha
 
             // MENGGAMBAR INDIKATOR "MAKAN LAGI" DI ATAS SEMUA BIDAK
-            if (mustContinueJumpPiece) {
+            if (mustContinueJumpPiece && !isGameOver) {
                 let pulse = (Math.sin(Date.now() / 120) + 1) / 2;
                 const x = mustContinueJumpPiece.visualX;
                 const y = mustContinueJumpPiece.visualY;
@@ -968,7 +1066,7 @@
             }
 
             // Draw Hand Animation
-            if (animatingPiece) {
+            if (animatingPiece && !isGameOver) {
                 ctx.font = `${pieceRadius * 2.5}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
