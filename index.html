@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Damdaman Seru!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            overscroll-behavior: none;
+            touch-action: none; /* Prevent pull-to-refresh on mobile/tablet */
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+        }
+        .screen.active {
+            display: flex;
+        }
+
+        .btn {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 0 rgba(0,0,0,0.2);
+        }
+        .btn:active {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 rgba(0,0,0,0.2);
+        }
+
+        canvas {
+            background-color: rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .bounce-anim {
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .toast-enter {
+            animation: toastIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .toast-exit {
+            animation: toastOut 0.5s ease-in forwards;
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translate(-50%, -20px) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+            to { opacity: 0; transform: translate(-50%, 20px) scale(0.8); }
+        }
+
+        /* Player indicator glows */
+        .glow-p1 { box-shadow: 0 0 20px #3b82f6; border: 4px solid #3b82f6; }
+        .glow-p2 { box-shadow: 0 0 20px #ef4444; border: 4px solid #ef4444; }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div id="menu-screen" class="screen active flex-col items-center justify-center relative">
+        <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-30">
+            <!-- Decorative background elements -->
+            <div class="absolute top-10 left-10 w-32 h-32 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
+            <div class="absolute bottom-10 right-10 w-40 h-40 bg-pink-400 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000"></div>
+        </div>
+
+        <div class="z-10 text-center flex flex-col items-center">
+            <h1 class="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600 mb-2 bounce-anim drop-shadow-lg">
+                DAMDAMAN
+            </h1>
+            <p class="text-xl md:text-2xl text-purple-700 font-semibold mb-12">Mainan Tradisional Seru!</p>
+
+            <div class="flex flex-col gap-6 w-80">
+                <button onclick="startGame('bot')" class="btn bg-blue-500 hover:bg-blue-400 text-white text-2xl font-bold py-4 px-8 rounded-3xl border-4 border-blue-700">
+                    🤖 Melawan Bot
+                </button>
+                <button onclick="startGame('pvp')" class="btn bg-green-500 hover:bg-green-400 text-white text-2xl font-bold py-4 px-8 rounded-3xl border-4 border-green-700">
+                    🧑‍🤝‍🧑 Player vs Player
+                </button>
+                <button onclick="showTutorial()" class="btn bg-yellow-400 hover:bg-yellow-300 text-yellow-900 text-2xl font-bold py-4 px-8 rounded-3xl border-4 border-yellow-600">
+                    📖 Cara Bermain
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tutorial-screen" class="screen flex-col items-center justify-center p-6">
+        <div class="bg-white/90 backdrop-blur-md p-8 rounded-3xl max-w-2xl w-full shadow-2xl relative border-4 border-purple-300">
+            <h2 class="text-4xl font-bold text-center text-purple-600 mb-6">Cara Bermain 📖</h2>
+            
+            <div class="space-y-4 text-lg text-gray-700 h-96 overflow-y-auto pr-4 mb-6 custom-scrollbar">
+                <p><strong>1. Tujuan Game:</strong> Habiskan semua bidak musuh atau buat musuh tidak bisa bergerak!</p>
+                <p><strong>2. Cara Jalan:</strong> Pilih bidakmu, lalu klik titik kosong di sebelahnya (mengikuti garis).</p>
+                <p><strong>3. Cara Memakan:</strong> Lompat melewati 1 bidak musuh ke titik kosong tepat di baliknya. Kamu bisa memakan berkali-kali jika ada jalan!</p>
+                <div class="bg-red-100 p-4 rounded-xl border-2 border-red-300 shadow-inner">
+                    <p class="font-bold text-red-600 text-xl mb-2">🚨 ATURAN "DAM ORA MANGAN" 🚨</p>
+                    <p>Memakan bidak musuh itu <strong>WAJIB!</strong> Jika kamu bisa memakan musuh tapi malah memindahkan bidak ke tempat lain, musuh akan teriak <em>"Dam Ora Mangan!"</em> dan bidakmu yang harusnya makan akan <strong>DIHUKUM (DIHAPUS)</strong> dari papan permainan!</p>
+                </div>
+            </div>
+
+            <button onclick="hideTutorial()" class="btn w-full bg-purple-500 hover:bg-purple-400 text-white text-xl font-bold py-3 px-6 rounded-2xl border-4 border-purple-700">
+                Kembali ke Menu
+            </button>
+        </div>
+    </div>
+
+    <div id="game-screen" class="screen flex-col md:flex-row items-center justify-center gap-4 p-4 md:p-8">
+        
+        <!-- Player 1 Profile -->
+        <div id="p1-profile" class="flex flex-row md:flex-col items-center bg-white/80 p-4 rounded-3xl min-w-[150px] transition-all">
+            <div class="text-4xl mb-2">👦</div>
+            <h3 class="text-xl font-bold text-blue-600" id="p1-name">Player 1</h3>
+            <div class="bg-blue-100 px-4 py-2 rounded-xl mt-2 text-center w-full">
+                <p class="text-sm text-blue-800 font-bold">Bidak Tersisa</p>
+                <p class="text-3xl font-bold text-blue-600" id="p1-score">12</p>
+            </div>
+        </div>
+
+        <!-- Board Area -->
+        <div class="relative flex flex-col items-center">
+            <div id="toast-container" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none hidden">
+                <div id="toast-msg" class="bg-black/80 text-white text-2xl font-bold px-8 py-4 rounded-full shadow-2xl text-center whitespace-nowrap border-4 border-white/20">
+                    Pesan
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="w-[95vw] h-[60vh] md:w-[60vw] md:h-[80vh] max-w-[800px] max-h-[800px] relative">
+                <canvas id="game-canvas" class="w-full h-full cursor-pointer"></canvas>
+            </div>
+
+            <button onclick="stopGame()" class="btn mt-4 bg-red-500 hover:bg-red-400 text-white text-lg font-bold py-2 px-6 rounded-2xl border-b-4 border-red-700 shadow-md">
+                🛑 Keluar
+            </button>
+        </div>
+
+        <!-- Player 2 Profile -->
+        <div id="p2-profile" class="flex flex-row md:flex-col items-center bg-white/80 p-4 rounded-3xl min-w-[150px] transition-all">
+            <div class="text-4xl mb-2" id="p2-avatar">🤖</div>
+            <h3 class="text-xl font-bold text-red-600" id="p2-name">Bot</h3>
+            <div class="bg-red-100 px-4 py-2 rounded-xl mt-2 text-center w-full">
+                <p class="text-sm text-red-800 font-bold">Bidak Tersisa</p>
+                <p class="text-3xl font-bold text-red-600" id="p2-score">12</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Audio Engine (Web Audio API) ---
+        let audioCtx;
+        
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                startBGM();
+            }
+            if(audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Background Music Synthesizer
+        function startBGM() {
+            const notes = [261.63, 329.63, 392.00, 523.25]; // C, E, G, C (Happy chord)
+            let noteIdx = 0;
+            
+            setInterval(() => {
+                if(document.getElementById('game-screen').classList.contains('active')) {
+                    playTone(notes[noteIdx], 0.1, 0.05, 'sine');
+                    noteIdx = (noteIdx + 1) % notes.length;
+                }
+            }, 500); // 120 BPM 8th notes
+        }
+
+        function playTone(freq, duration, vol, type = 'sine', slideDown = false) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            if(slideDown) {
+                osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + duration);
+            }
+            
+            gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Sound Effects
+        const SFX = {
+            select: () => playTone(600, 0.1, 0.1, 'triangle'),
+            move: () => playTone(300, 0.15, 0.15, 'square', true),
+            capture: () => {
+                playTone(150, 0.2, 0.3, 'sawtooth', true);
+                setTimeout(() => playTone(800, 0.1, 0.2, 'square'), 50);
+            },
+            damOraMangan: () => {
+                // Buzz sound
+                playTone(100, 0.5, 0.4, 'sawtooth');
+                playTone(105, 0.5, 0.4, 'sawtooth');
+                
+                // Voice Synthesis
+                if ('speechSynthesis' in window) {
+                    const msg = new SpeechSynthesisUtterance("Dam! Ora mangan!");
+                    msg.lang = 'id-ID';
+                    msg.pitch = 1.5; // Funny voice
+                    msg.rate = 1.2;
+                    window.speechSynthesis.speak(msg);
+                }
+            },
+            win: () => {
+                playTone(400, 0.2, 0.2);
+                setTimeout(() => playTone(500, 0.2, 0.2), 200);
+                setTimeout(() => playTone(600, 0.4, 0.2), 400);
+            }
+        };
+
+        // --- Game State Variables ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let nodes = [];
+        let pieces = [];
+        let gameMode = 'bot'; // 'bot' or 'pvp'
+        let currentPlayer = 1; // 1 (Blue) or 2 (Red)
+        let selectedPiece = null;
+        let possibleMoves = [];
+        let mustContinueJumpPiece = null; // Used for multi-jumps
+        let isAnimating = false;
+        let animationQueue = [];
+        let gameLoopId;
+
+        // Colors
+        const C_BG = 'rgba(255, 255, 255, 0)';
+        const C_LINE = '#8B5A2B'; // Wood color
+        const C_P1 = '#3b82f6';
+        const C_P2 = '#ef4444';
+        const C_HIGHLIGHT = 'rgba(252, 211, 77, 0.6)'; // Yellow highlight
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function showTutorial() { showScreen('tutorial-screen'); }
+        function hideTutorial() { showScreen('menu-screen'); }
+
+        function showToast(message, duration = 2000) {
+            const container = document.getElementById('toast-container');
+            const msgEl = document.getElementById('toast-msg');
+            msgEl.innerHTML = message;
+            
+            container.classList.remove('hidden', 'toast-exit');
+            container.classList.add('toast-enter');
+            
+            setTimeout(() => {
+                container.classList.remove('toast-enter');
+                container.classList.add('toast-exit');
+                setTimeout(() => container.classList.add('hidden'), 500);
+            }, duration);
+        }
+
+        function startGame(mode) {
+            initAudio();
+            gameMode = mode;
+            showScreen('game-screen');
+            
+            // Setup UI Profile
+            if(mode === 'bot') {
+                document.getElementById('p2-avatar').innerText = '🤖';
+                document.getElementById('p2-name').innerText = 'Bot Ganas';
+            } else {
+                document.getElementById('p2-avatar').innerText = '👧';
+                document.getElementById('p2-name').innerText = 'Player 2';
+            }
+
+            resizeCanvas();
+            initBoard();
+            currentPlayer = 1;
+            selectedPiece = null;
+            mustContinueJumpPiece = null;
+            isAnimating = false;
+            updateUI();
+            showToast("Game Mulai! Giliran Player 1");
+
+            // Start Render Loop
+            if(gameLoopId) cancelAnimationFrame(gameLoopId);
+            renderLoop();
+        }
+
+        function stopGame() {
+            if(gameLoopId) cancelAnimationFrame(gameLoopId);
+            showScreen('menu-screen');
+        }
+
+        window.addEventListener('resize', () => {
+            if(document.getElementById('game-screen').classList.contains('active')) {
+                resizeCanvas();
+                // Update piece visual coordinates on resize
+                updatePiecesVisuals();
+            }
+        });
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            // High DPI support
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+        }
+
+        function MathLerp(start, end, amt) {
+            return (1 - amt) * start + amt * end;
+        }
+
+        function initBoard() {
+            nodes = [];
+            pieces = [];
+            let idCounter = 0;
+
+            // Create 5x5 nodes
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    nodes.push({ id: idCounter++, c: c, r: r, neighbors: [] });
+                }
+            }
+
+            // Define connections
+            for (let i = 0; i < nodes.length; i++) {
+                let n = nodes[i];
+                let c = n.c; let r = n.r;
+                
+                // Orthogonal neighbors
+                const dirs = [[0,1], [1,0], [0,-1], [-1,0]];
+                
+                // Diagonal neighbors only for nodes where (c+r) is even
+                if ((c + r) % 2 === 0) {
+                    dirs.push([1,1], [1,-1], [-1,1], [-1,-1]);
+                }
+
+                dirs.forEach(d => {
+                    let nc = c + d[0];
+                    let nr = r + d[1];
+                    if (nc >= 0 && nc < 5 && nr >= 0 && nr < 5) {
+                        let neighborId = nr * 5 + nc;
+                        n.neighbors.push(neighborId);
+                    }
+                });
+            }
+
+            // Place Pieces (Horizontal orientation)
+            // P1 (Left): cols 0, 1, and (col 2, rows 3,4)
+            // P2 (Right): cols 3, 4, and (col 2, rows 0,1)
+            let pieceId = 0;
+            nodes.forEach(n => {
+                let p = 0;
+                if (n.c === 0 || n.c === 1) p = 1;
+                else if (n.c === 2 && n.r > 2) p = 1;
+                else if (n.c === 3 || n.c === 4) p = 2;
+                else if (n.c === 2 && n.r < 2) p = 2;
+
+                if (p > 0) {
+                    pieces.push({
+                        id: pieceId++,
+                        player: p,
+                        nodeId: n.id,
+                        visualX: 0, // Set later
+                        visualY: 0
+                    });
+                }
+            });
+
+            updatePiecesVisuals();
+        }
+
+        function getNodeCoords(c, r) {
+            // Mapping logical grid to canvas space with padding
+            const padding = 40;
+            const width = canvas.width / (window.devicePixelRatio || 1);
+            const height = canvas.height / (window.devicePixelRatio || 1);
+            const usableW = width - padding * 2;
+            const usableH = height - padding * 2;
+            
+            const cellW = usableW / 4;
+            const cellH = usableH / 4;
+            
+            return {
+                x: padding + c * cellW,
+                y: padding + r * cellH
+            };
+        }
+
+        function updatePiecesVisuals() {
+            pieces.forEach(p => {
+                const node = nodes.find(n => n.id === p.nodeId);
+                const coords = getNodeCoords(node.c, node.r);
+                p.visualX = coords.x;
+                p.visualY = coords.y;
+            });
+        }
+
+        function getPieceAt(nodeId) {
+            return pieces.find(p => p.nodeId === nodeId);
+        }
+
+        function getValidMoves(piece) {
+            let moves = [];
+            const node = nodes.find(n => n.id === piece.nodeId);
+            
+            node.neighbors.forEach(nid => {
+                const adjPiece = getPieceAt(nid);
+                if (!adjPiece) {
+                    // Normal move
+                    moves.push({ type: 'normal', target: nid });
+                } else if (adjPiece.player !== piece.player) {
+                    // Check for jump/capture
+                    const adjNode = nodes.find(n => n.id === nid);
+                    const dc = adjNode.c - node.c;
+                    const dr = adjNode.r - node.r;
+                    
+                    const jumpC = adjNode.c + dc;
+                    const jumpR = adjNode.r + dr;
+                    
+                    if (jumpC >= 0 && jumpC < 5 && jumpR >= 0 && jumpR < 5) {
+                        const jumpNode = nodes.find(n => n.c === jumpC && n.r === jumpR);
+                        // Check if jump target is connected to the adjacent node in a straight line
+                        if (adjNode.neighbors.includes(jumpNode.id) && !getPieceAt(jumpNode.id)) {
+                            moves.push({ type: 'capture', target: jumpNode.id, captureTarget: nid });
+                        }
+                    }
+                }
+            });
+            return moves;
+        }
+
+        function getAllCaptures(player) {
+            let allCaptures = [];
+            pieces.filter(p => p.player === player).forEach(p => {
+                const moves = getValidMoves(p);
+                moves.filter(m => m.type === 'capture').forEach(m => {
+                    allCaptures.push({ piece: p, move: m });
+                });
+            });
+            return allCaptures;
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (isAnimating) return;
+            if (gameMode === 'bot' && currentPlayer === 2) return; // Prevent clicking during bot turn
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Find clicked node
+            let clickedNode = null;
+            let minClickDist = 30; // 30px radius
+
+            for (let n of nodes) {
+                const coords = getNodeCoords(n.c, n.r);
+                const dist = Math.hypot(x - coords.x, y - coords.y);
+                if (dist < minClickDist) {
+                    clickedNode = n;
+                    break;
+                }
+            }
+
+            if (!clickedNode) return;
+
+            const clickedPiece = getPieceAt(clickedNode.id);
+
+            // If we must continue jump, force selection to that piece
+            if (mustContinueJumpPiece) {
+                if (clickedPiece === mustContinueJumpPiece) {
+                    return; // Already selected implicitly
+                }
+                if (!clickedPiece) {
+                    // Try to move the locked piece
+                    attemptMove(mustContinueJumpPiece, clickedNode);
+                } else {
+                    SFX.select(); // Error beep
+                    showToast("Harus lanjut memakan!");
+                }
+                return;
+            }
+
+            // Normal selection
+            if (clickedPiece && clickedPiece.player === currentPlayer) {
+                selectedPiece = clickedPiece;
+                possibleMoves = getValidMoves(selectedPiece);
+                SFX.select();
+            } else if (selectedPiece && !clickedPiece) {
+                attemptMove(selectedPiece, clickedNode);
+            }
+        });
+
+        function attemptMove(piece, targetNode) {
+            const move = possibleMoves.find(m => m.target === targetNode.id);
+            if (!move) return; // Invalid move
+
+            // --- DAM ORA MANGAN CHECK ---
+            if (move.type === 'normal') {
+                const allCaps = getAllCaptures(currentPlayer);
+                if (allCaps.length > 0) {
+                    // VIOLATION! Player should have captured but didn't.
+                    SFX.damOraMangan();
+                    showToast("DAM ORA MANGAN! 🚨<br><span class='text-sm font-normal'>Bidakmu dihukum!</span>", 3000);
+                    
+                    // Identify pieces that could have captured and remove them
+                    const guiltyPieceIds = [...new Set(allCaps.map(c => c.piece.id))];
+                    pieces = pieces.filter(p => !guiltyPieceIds.includes(p.id));
+                    
+                    // The move is allowed, but punishment is served.
+                    executeMoveAnimation(piece, targetNode, move, true);
+                    return;
+                }
+            }
+            // -----------------------------
+
+            executeMoveAnimation(piece, targetNode, move, false);
+        }
+
+        function executeMoveAnimation(piece, targetNode, moveDetails, wasDamPunished) {
+            isAnimating = true;
+            const targetCoords = getNodeCoords(targetNode.c, targetNode.r);
+            
+            // Play movement sound immediately
+            if (moveDetails.type === 'capture') SFX.capture();
+            else SFX.move();
+
+            // Simple animation routine
+            const startTime = performance.now();
+            const startX = piece.visualX;
+            const startY = piece.visualY;
+            const duration = 200; // ms
+
+            function animate(time) {
+                let progress = (time - startTime) / duration;
+                if (progress > 1) progress = 1;
+                
+                piece.visualX = MathLerp(startX, targetCoords.x, progress);
+                piece.visualY = MathLerp(startY, targetCoords.y, progress);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    finalizeMove(piece, targetNode, moveDetails, wasDamPunished);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function finalizeMove(piece, targetNode, moveDetails, wasDamPunished) {
+            piece.nodeId = targetNode.id;
+            selectedPiece = null;
+            possibleMoves = [];
+
+            if (moveDetails.type === 'capture') {
+                // Remove captured piece
+                pieces = pieces.filter(p => p.nodeId !== moveDetails.captureTarget);
+                
+                // Check if this piece can capture AGAIN
+                const nextMoves = getValidMoves(piece);
+                const nextCaptures = nextMoves.filter(m => m.type === 'capture');
+                
+                if (nextCaptures.length > 0) {
+                    mustContinueJumpPiece = piece;
+                    selectedPiece = piece;
+                    possibleMoves = nextCaptures;
+                    isAnimating = false;
+                    showToast("Makan lagi!", 1000);
+                    updateUI();
+                    
+                    // If Bot is playing, schedule next jump
+                    if (gameMode === 'bot' && currentPlayer === 2) {
+                        setTimeout(playBot, 500);
+                    }
+                    return;
+                }
+            }
+
+            mustContinueJumpPiece = null;
+            isAnimating = false;
+            endTurn();
+        }
+
+        function endTurn() {
+            // Check win condition
+            const p1Count = pieces.filter(p => p.player === 1).length;
+            const p2Count = pieces.filter(p => p.player === 2).length;
+
+            if (p1Count === 0 || p2Count === 0) {
+                handleWin(p1Count === 0 ? 2 : 1);
+                return;
+            }
+
+            // Switch Turn
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            updateUI();
+            
+            let turnText = currentPlayer === 1 ? "Giliran Player 1" : (gameMode === 'bot' ? "Bot Berpikir..." : "Giliran Player 2");
+            showToast(turnText, 1500);
+
+            if (gameMode === 'bot' && currentPlayer === 2) {
+                setTimeout(playBot, 800);
+            }
+        }
+
+        function handleWin(winnerPlayer) {
+            SFX.win();
+            const winnerName = winnerPlayer === 1 ? "Player 1" : (gameMode === 'bot' ? "Bot" : "Player 2");
+            showToast(`🎉 ${winnerName} MENANG! 🎉`, 5000);
+            updateUI();
+            setTimeout(() => {
+                stopGame();
+            }, 5000);
+        }
+
+        function updateUI() {
+            const p1Count = pieces.filter(p => p.player === 1).length;
+            const p2Count = pieces.filter(p => p.player === 2).length;
+            
+            document.getElementById('p1-score').innerText = p1Count;
+            document.getElementById('p2-score').innerText = p2Count;
+
+            const p1Profile = document.getElementById('p1-profile');
+            const p2Profile = document.getElementById('p2-profile');
+
+            if (currentPlayer === 1) {
+                p1Profile.classList.add('glow-p1');
+                p2Profile.classList.remove('glow-p2');
+            } else {
+                p2Profile.classList.add('glow-p2');
+                p1Profile.classList.remove('glow-p1');
+            }
+        }
+
+        function playBot() {
+            if (currentPlayer !== 2 || isAnimating) return;
+
+            let pieceToMove = null;
+            let moveToMake = null;
+
+            if (mustContinueJumpPiece) {
+                pieceToMove = mustContinueJumpPiece;
+                moveToMake = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+            } else {
+                const allCaps = getAllCaptures(2);
+                if (allCaps.length > 0) {
+                    // MUST capture. Pick a random capture (could be made smarter to chain multi-jumps)
+                    const choice = allCaps[Math.floor(Math.random() * allCaps.length)];
+                    pieceToMove = choice.piece;
+                    moveToMake = choice.move;
+                } else {
+                    // Normal move
+                    let allNormalMoves = [];
+                    pieces.filter(p => p.player === 2).forEach(p => {
+                        getValidMoves(p).filter(m => m.type === 'normal').forEach(m => {
+                            allNormalMoves.push({ piece: p, move: m });
+                        });
+                    });
+
+                    if (allNormalMoves.length === 0) {
+                        // Bot has no moves, player 1 wins!
+                        handleWin(1);
+                        return;
+                    }
+                    
+                    // Simple logic: prefer moving towards left (smaller c)
+                    allNormalMoves.sort((a, b) => {
+                        const targetA = nodes.find(n => n.id === a.move.target);
+                        const targetB = nodes.find(n => n.id === b.move.target);
+                        return targetA.c - targetB.c; 
+                    });
+
+                    // Add some randomness so bot isn't entirely predictable
+                    let pool = allNormalMoves.slice(0, Math.max(1, Math.floor(allNormalMoves.length / 2)));
+                    const choice = pool[Math.floor(Math.random() * pool.length)];
+                    pieceToMove = choice.piece;
+                    moveToMake = choice.move;
+                }
+            }
+
+            selectedPiece = pieceToMove;
+            possibleMoves = [moveToMake]; // Lock bot's choice
+            attemptMove(pieceToMove, nodes.find(n => n.id === moveToMake.target));
+        }
+
+        function renderLoop() {
+            const w = canvas.width / (window.devicePixelRatio || 1);
+            const h = canvas.height / (window.devicePixelRatio || 1);
+            ctx.clearRect(0, 0, w, h);
+
+            // Draw Lines
+            ctx.strokeStyle = C_LINE;
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+
+            for (let i = 0; i < nodes.length; i++) {
+                let n = nodes[i];
+                const start = getNodeCoords(n.c, n.r);
+                
+                n.neighbors.forEach(nid => {
+                    // Avoid drawing double lines by only drawing to higher IDs
+                    if (nid > n.id) {
+                        const endNode = nodes.find(x => x.id === nid);
+                        const end = getNodeCoords(endNode.c, endNode.r);
+                        ctx.beginPath();
+                        ctx.moveTo(start.x, start.y);
+                        ctx.lineTo(end.x, end.y);
+                        ctx.stroke();
+                    }
+                });
+            }
+
+            // Draw Nodes (Dots)
+            ctx.fillStyle = '#fde68a'; // Amber 200
+            nodes.forEach(n => {
+                const pos = getNodeCoords(n.c, n.r);
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+
+            // Draw Highlights for possible moves
+            if (possibleMoves.length > 0 && selectedPiece) {
+                possibleMoves.forEach(m => {
+                    const tNode = nodes.find(n => n.id === m.target);
+                    const pos = getNodeCoords(tNode.c, tNode.r);
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 20, 0, Math.PI * 2);
+                    ctx.fillStyle = C_HIGHLIGHT;
+                    ctx.fill();
+                    
+                    // Draw mini inner dot
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.fill();
+                });
+            }
+
+            // Draw Pieces
+            // Sort pieces so selected/animating piece draws on top
+            let sortedPieces = [...pieces].sort((a, b) => (a === selectedPiece ? 1 : 0) - (b === selectedPiece ? 1 : 0));
+
+            sortedPieces.forEach(p => {
+                const x = p.visualX;
+                const y = p.visualY;
+                const radius = 22;
+
+                // Selection glow
+                if (p === selectedPiece) {
+                    ctx.shadowColor = p.player === 1 ? C_P1 : C_P2;
+                    ctx.shadowBlur = 20;
+                } else if (p === mustContinueJumpPiece) {
+                    // Blinking glow for must continue
+                    ctx.shadowColor = '#fbbf24';
+                    ctx.shadowBlur = 15 + Math.sin(Date.now() / 100) * 5;
+                }
+
+                // Base shadow
+                ctx.shadowOffsetY = 4;
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                if(p === selectedPiece) ctx.shadowOffsetY = 8; // Lifted effect
+
+                // Draw Piece Circle
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                
+                // Gradient for 3D look
+                let grd = ctx.createRadialGradient(x - 5, y - 5, 2, x, y, radius);
+                if (p.player === 1) {
+                    grd.addColorStop(0, '#60a5fa');
+                    grd.addColorStop(1, '#2563eb');
+                } else {
+                    grd.addColorStop(0, '#f87171');
+                    grd.addColorStop(1, '#dc2626');
+                }
+                ctx.fillStyle = grd;
+                ctx.fill();
+
+                // Inner rim
+                ctx.beginPath();
+                ctx.arc(x, y, radius - 4, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Reset shadow
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetY = 0;
+                
+                // Simple pattern on piece (Star/Crown hint)
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.beginPath();
+                ctx.arc(x, y, radius/3, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            gameLoopId = requestAnimationFrame(renderLoop);
+        }
+
+    </script>
+</body>
+</html>
