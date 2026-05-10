@@ -647,11 +647,11 @@
                     selectedPiece = piece;
                     possibleMoves = nextCaptures;
                     isAnimating = false;
-                    showToast("Lanjut Makan!", 1000);
+                    showToast("Bisa Makan Lagi!", 1500);
                     updateUI();
                     
                     if (gameMode === 'bot' && currentPlayer === 2) {
-                        setTimeout(playBot, 500);
+                        setTimeout(playBot, 800);
                     }
                     return;
                 }
@@ -840,8 +840,23 @@
                 let isGlowingTurn = !selectedPiece && p.player === currentPlayer && p !== mustContinueJumpPiece;
                 let pulse = (Math.sin(Date.now() / 150) + 1) / 2; // Normalisasi ke 0.0 - 1.0
 
-                // Tambahkan Ring/Halo fisik di belakang bidak agar glow jauh lebih terlihat (terang & besar)
-                if (isGlowingTurn) {
+                // Tambahkan Ring/Halo fisik di belakang bidak
+                if (p === mustContinueJumpPiece) {
+                    // Cincin ganda berwarna oranye/kuning untuk bidak "MAKAN LAGI"
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetY = 0;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, pieceRadius * (1.6 + pulse * 0.4), 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(234, 88, 12, ${0.6 - pulse * 0.3})`; // Orange glow lebar
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, pieceRadius * (1.2 + pulse * 0.2), 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(253, 224, 71, ${0.8 - pulse * 0.2})`; // Yellow glow dalam
+                    ctx.fill();
+                } else if (isGlowingTurn) {
+                    // Cincin untuk giliran normal
                     ctx.shadowBlur = 0;
                     ctx.shadowOffsetY = 0;
                     ctx.beginPath();
@@ -860,9 +875,9 @@
                     ctx.shadowOffsetY = 8; // Float effect for selected piece
                 } else if (p === mustContinueJumpPiece) {
                     ctx.shadowColor = '#fde047';
-                    ctx.shadowBlur = 20 + pulse * 15;
+                    ctx.shadowBlur = 25 + pulse * 15;
                 } else if (isGlowingTurn) {
-                    // Turn indicator glow berdenyut - LEBIH TERANG DAN BESAR
+                    // Turn indicator glow berdenyut
                     ctx.shadowColor = p.player === 1 ? '#38bdf8' : '#fb7185';
                     ctx.shadowBlur = 35 + pulse * 25;
                 } else {
@@ -924,6 +939,33 @@
                 }
             }
             ctx.globalAlpha = 1.0; // Reset global alpha
+
+            // MENGGAMBAR INDIKATOR "MAKAN LAGI" DI ATAS SEMUA BIDAK
+            if (mustContinueJumpPiece) {
+                let pulse = (Math.sin(Date.now() / 120) + 1) / 2;
+                const x = mustContinueJumpPiece.visualX;
+                const y = mustContinueJumpPiece.visualY;
+                
+                // Animasi memantul
+                let textY = y - pieceRadius * 1.5 - (pulse * 15);
+                
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                
+                // Panah penunjuk
+                ctx.font = `${pieceRadius}px Arial`;
+                ctx.fillText("👇", x, textY + pieceRadius * 0.8);
+                
+                // Teks "MAKAN LAGI!"
+                ctx.font = `bold ${pieceRadius * 0.8}px Fredoka, sans-serif`;
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#ffffff'; // Garis pinggir putih agar terbaca jelas
+                ctx.lineJoin = 'round';
+                ctx.strokeText("MAKAN LAGI!", x, textY);
+                
+                ctx.fillStyle = '#ea580c'; // Warna orange terang
+                ctx.fillText("MAKAN LAGI!", x, textY);
+            }
 
             // Draw Hand Animation
             if (animatingPiece) {
