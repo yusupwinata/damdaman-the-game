@@ -34,7 +34,7 @@
         }
 
         canvas {
-            background-color: rgba(255, 255, 255, 0.6);
+            background-color: rgba(255, 255, 255, 0.8);
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
@@ -124,10 +124,10 @@
         <!-- Player 1 Profile -->
         <div id="p1-profile" class="flex flex-row md:flex-col items-center bg-white/80 p-4 rounded-3xl min-w-[150px] transition-all">
             <div class="text-4xl mb-2">👦</div>
-            <h3 class="text-xl font-bold text-blue-600" id="p1-name">Player 1</h3>
+            <h3 class="text-xl font-bold text-blue-600" id="p1-name">Pemain 1</h3>
             <div class="bg-blue-100 px-4 py-2 rounded-xl mt-2 text-center w-full">
-                <p class="text-sm text-blue-800 font-bold">Bidak Tersisa</p>
-                <p class="text-3xl font-bold text-blue-600" id="p1-score">12</p>
+                <p class="text-sm text-blue-800 font-bold">Bidak</p>
+                <p class="text-3xl font-bold text-blue-600" id="p1-score">14</p>
             </div>
         </div>
 
@@ -140,7 +140,7 @@
             </div>
 
             <!-- Canvas Container -->
-            <div class="w-[95vw] h-[60vh] md:w-[60vw] md:h-[80vh] max-w-[800px] max-h-[800px] relative">
+            <div class="w-[95vw] h-[55vh] md:w-[70vw] md:h-[80vh] max-w-[1000px] max-h-[700px] relative">
                 <canvas id="game-canvas" class="w-full h-full cursor-pointer"></canvas>
             </div>
 
@@ -152,10 +152,10 @@
         <!-- Player 2 Profile -->
         <div id="p2-profile" class="flex flex-row md:flex-col items-center bg-white/80 p-4 rounded-3xl min-w-[150px] transition-all">
             <div class="text-4xl mb-2" id="p2-avatar">🤖</div>
-            <h3 class="text-xl font-bold text-red-600" id="p2-name">Bot</h3>
+            <h3 class="text-xl font-bold text-red-600" id="p2-name">Pemain 2</h3>
             <div class="bg-red-100 px-4 py-2 rounded-xl mt-2 text-center w-full">
-                <p class="text-sm text-red-800 font-bold">Bidak Tersisa</p>
-                <p class="text-3xl font-bold text-red-600" id="p2-score">12</p>
+                <p class="text-sm text-red-800 font-bold">Bidak</p>
+                <p class="text-3xl font-bold text-red-600" id="p2-score">14</p>
             </div>
         </div>
 
@@ -250,15 +250,13 @@
         let possibleMoves = [];
         let mustContinueJumpPiece = null; // Used for multi-jumps
         let isAnimating = false;
-        let animationQueue = [];
         let gameLoopId;
 
         // Colors
-        const C_BG = 'rgba(255, 255, 255, 0)';
-        const C_LINE = '#8B5A2B'; // Wood color
-        const C_P1 = '#3b82f6';
-        const C_P2 = '#ef4444';
-        const C_HIGHLIGHT = 'rgba(252, 211, 77, 0.6)'; // Yellow highlight
+        const C_LINE = '#cbd5e1'; // Light gray lines to match the image
+        const C_P1 = '#0ea5e9'; // Light blue
+        const C_P2 = '#ff0000'; // Bright red
+        const C_HIGHLIGHT = 'rgba(252, 211, 77, 0.7)'; // Yellow highlight
 
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -294,7 +292,7 @@
                 document.getElementById('p2-name').innerText = 'Bot Ganas';
             } else {
                 document.getElementById('p2-avatar').innerText = '👧';
-                document.getElementById('p2-name').innerText = 'Player 2';
+                document.getElementById('p2-name').innerText = 'Pemain 2';
             }
 
             resizeCanvas();
@@ -304,7 +302,7 @@
             mustContinueJumpPiece = null;
             isAnimating = false;
             updateUI();
-            showToast("Game Mulai! Giliran Player 1");
+            showToast("Game Mulai! Giliran Pemain 1");
 
             // Start Render Loop
             if(gameLoopId) cancelAnimationFrame(gameLoopId);
@@ -319,14 +317,12 @@
         window.addEventListener('resize', () => {
             if(document.getElementById('game-screen').classList.contains('active')) {
                 resizeCanvas();
-                // Update piece visual coordinates on resize
                 updatePiecesVisuals();
             }
         });
 
         function resizeCanvas() {
             const rect = canvas.parentElement.getBoundingClientRect();
-            // High DPI support
             const dpr = window.devicePixelRatio || 1;
             canvas.width = rect.width * dpr;
             canvas.height = rect.height * dpr;
@@ -339,58 +335,72 @@
             return (1 - amt) * start + amt * end;
         }
 
+        // INITIALIZE TRUE DAMDAMAN BOARD
         function initBoard() {
             nodes = [];
             pieces = [];
             let idCounter = 0;
 
-            // Create 5x5 nodes
-            for (let r = 0; r < 5; r++) {
-                for (let c = 0; c < 5; c++) {
-                    nodes.push({ id: idCounter++, c: c, r: r, neighbors: [] });
-                }
+            function addNode(c, r) {
+                nodes.push({ id: idCounter++, c: c, r: r, neighbors: [] });
             }
 
-            // Define connections
-            for (let i = 0; i < nodes.length; i++) {
-                let n = nodes[i];
-                let c = n.c; let r = n.r;
-                
-                // Orthogonal neighbors
-                const dirs = [[0,1], [1,0], [0,-1], [-1,0]];
-                
-                // Diagonal neighbors only for nodes where (c+r) is even
-                if ((c + r) % 2 === 0) {
-                    dirs.push([1,1], [1,-1], [-1,1], [-1,-1]);
+            // 1. Generate 33 Nodes (9 columns layout)
+            addNode(0, 2); // Left wing apex
+            addNode(1, 1); addNode(1, 2); addNode(1, 3); // Left wing middle
+            
+            // Center 5x5 grid
+            for(let c = 2; c <= 6; c++) {
+                for(let r = 0; r <= 4; r++) {
+                    addNode(c, r);
                 }
+            }
+            
+            addNode(7, 1); addNode(7, 2); addNode(7, 3); // Right wing middle
+            addNode(8, 2); // Right wing apex
 
-                dirs.forEach(d => {
-                    let nc = c + d[0];
-                    let nr = r + d[1];
-                    if (nc >= 0 && nc < 5 && nr >= 0 && nr < 5) {
-                        let neighborId = nr * 5 + nc;
-                        n.neighbors.push(neighborId);
+            // 2. Build Authentic Connections
+            for(let i = 0; i < nodes.length; i++) {
+                for(let j = i + 1; j < nodes.length; j++) {
+                    let n1 = nodes[i];
+                    let n2 = nodes[j];
+                    
+                    let dc = Math.abs(n1.c - n2.c);
+                    let dr = Math.abs(n1.r - n2.r);
+                    
+                    let connected = false;
+                    if (dc === 1 && dr === 0) connected = true; // Horizontal line
+                    if (dc === 0 && dr === 1) connected = true; // Vertical line
+                    
+                    // Diagonal lines ONLY cross at nodes where (col + row) is even
+                    // This mathematically generates the perfect Alquerque diamond patterns
+                    if (dc === 1 && dr === 1 && ((n1.c + n1.r) % 2 === 0)) {
+                        connected = true;
                     }
-                });
+                    
+                    if (connected) {
+                        n1.neighbors.push(n2.id);
+                        n2.neighbors.push(n1.id);
+                    }
+                }
             }
 
-            // Place Pieces (Horizontal orientation)
-            // P1 (Left): cols 0, 1, and (col 2, rows 3,4)
-            // P2 (Right): cols 3, 4, and (col 2, rows 0,1)
+            // 3. Place 14 Pieces for each player
             let pieceId = 0;
             nodes.forEach(n => {
                 let p = 0;
-                if (n.c === 0 || n.c === 1) p = 1;
-                else if (n.c === 2 && n.r > 2) p = 1;
-                else if (n.c === 3 || n.c === 4) p = 2;
-                else if (n.c === 2 && n.r < 2) p = 2;
+                // Pemain 1 (Blue) takes columns 0, 1, 2, and 3
+                if (n.c <= 3) p = 1;
+                // Pemain 2 (Red) takes columns 5, 6, 7, and 8
+                // Column 4 (tengah) dibiarkan kosong sepenuhnya
+                else if (n.c >= 5) p = 2;
 
                 if (p > 0) {
                     pieces.push({
                         id: pieceId++,
                         player: p,
                         nodeId: n.id,
-                        visualX: 0, // Set later
+                        visualX: 0,
                         visualY: 0
                     });
                 }
@@ -400,15 +410,15 @@
         }
 
         function getNodeCoords(c, r) {
-            // Mapping logical grid to canvas space with padding
-            const padding = 40;
+            // Lebar 9 kolom, tinggi 5 baris
+            const padding = Math.min(canvas.width, canvas.height) / (window.devicePixelRatio * 10);
             const width = canvas.width / (window.devicePixelRatio || 1);
             const height = canvas.height / (window.devicePixelRatio || 1);
             const usableW = width - padding * 2;
             const usableH = height - padding * 2;
             
-            const cellW = usableW / 4;
-            const cellH = usableH / 4;
+            const cellW = usableW / 8; // 9 columns = 8 segments
+            const cellH = usableH / 4; // 5 rows = 4 segments
             
             return {
                 x: padding + c * cellW,
@@ -436,10 +446,10 @@
             node.neighbors.forEach(nid => {
                 const adjPiece = getPieceAt(nid);
                 if (!adjPiece) {
-                    // Normal move
+                    // Jalan biasa
                     moves.push({ type: 'normal', target: nid });
                 } else if (adjPiece.player !== piece.player) {
-                    // Check for jump/capture
+                    // Cek kelurusan garis untuk melompat/memakan
                     const adjNode = nodes.find(n => n.id === nid);
                     const dc = adjNode.c - node.c;
                     const dr = adjNode.r - node.r;
@@ -447,12 +457,11 @@
                     const jumpC = adjNode.c + dc;
                     const jumpR = adjNode.r + dr;
                     
-                    if (jumpC >= 0 && jumpC < 5 && jumpR >= 0 && jumpR < 5) {
-                        const jumpNode = nodes.find(n => n.c === jumpC && n.r === jumpR);
-                        // Check if jump target is connected to the adjacent node in a straight line
-                        if (adjNode.neighbors.includes(jumpNode.id) && !getPieceAt(jumpNode.id)) {
-                            moves.push({ type: 'capture', target: jumpNode.id, captureTarget: nid });
-                        }
+                    const jumpNode = nodes.find(n => n.c === jumpC && n.r === jumpR);
+                    
+                    // Pastikan node tujuan ada, terhubung ke bidak yang dilompati, dan kosong
+                    if (jumpNode && adjNode.neighbors.includes(jumpNode.id) && !getPieceAt(jumpNode.id)) {
+                        moves.push({ type: 'capture', target: jumpNode.id, captureTarget: nid });
                     }
                 }
             });
@@ -472,15 +481,16 @@
 
         canvas.addEventListener('pointerdown', (e) => {
             if (isAnimating) return;
-            if (gameMode === 'bot' && currentPlayer === 2) return; // Prevent clicking during bot turn
+            if (gameMode === 'bot' && currentPlayer === 2) return; 
 
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            // Find clicked node
+            // Cari radius klik dinamis
+            const cellW = (canvas.width / (window.devicePixelRatio || 1)) / 8;
+            let minClickDist = Math.max(20, cellW * 0.4); 
             let clickedNode = null;
-            let minClickDist = 30; // 30px radius
 
             for (let n of nodes) {
                 const coords = getNodeCoords(n.c, n.r);
@@ -495,22 +505,19 @@
 
             const clickedPiece = getPieceAt(clickedNode.id);
 
-            // If we must continue jump, force selection to that piece
+            // Jika sedang dalam rantai makan
             if (mustContinueJumpPiece) {
-                if (clickedPiece === mustContinueJumpPiece) {
-                    return; // Already selected implicitly
-                }
+                if (clickedPiece === mustContinueJumpPiece) return; 
+                
                 if (!clickedPiece) {
-                    // Try to move the locked piece
                     attemptMove(mustContinueJumpPiece, clickedNode);
                 } else {
-                    SFX.select(); // Error beep
+                    SFX.select();
                     showToast("Harus lanjut memakan!");
                 }
                 return;
             }
 
-            // Normal selection
             if (clickedPiece && clickedPiece.player === currentPlayer) {
                 selectedPiece = clickedPiece;
                 possibleMoves = getValidMoves(selectedPiece);
@@ -522,26 +529,22 @@
 
         function attemptMove(piece, targetNode) {
             const move = possibleMoves.find(m => m.target === targetNode.id);
-            if (!move) return; // Invalid move
+            if (!move) return; 
 
-            // --- DAM ORA MANGAN CHECK ---
+            // --- DAM ORA MANGAN ---
             if (move.type === 'normal') {
                 const allCaps = getAllCaptures(currentPlayer);
                 if (allCaps.length > 0) {
-                    // VIOLATION! Player should have captured but didn't.
                     SFX.damOraMangan();
-                    showToast("DAM ORA MANGAN! 🚨<br><span class='text-sm font-normal'>Bidakmu dihukum!</span>", 3000);
+                    showToast("DAM ORA MANGAN! 🚨<br><span class='text-sm font-normal'>Bidakmu yang lupa makan dihukum mati!</span>", 3500);
                     
-                    // Identify pieces that could have captured and remove them
                     const guiltyPieceIds = [...new Set(allCaps.map(c => c.piece.id))];
                     pieces = pieces.filter(p => !guiltyPieceIds.includes(p.id));
                     
-                    // The move is allowed, but punishment is served.
                     executeMoveAnimation(piece, targetNode, move, true);
                     return;
                 }
             }
-            // -----------------------------
 
             executeMoveAnimation(piece, targetNode, move, false);
         }
@@ -550,15 +553,13 @@
             isAnimating = true;
             const targetCoords = getNodeCoords(targetNode.c, targetNode.r);
             
-            // Play movement sound immediately
             if (moveDetails.type === 'capture') SFX.capture();
             else SFX.move();
 
-            // Simple animation routine
             const startTime = performance.now();
             const startX = piece.visualX;
             const startY = piece.visualY;
-            const duration = 200; // ms
+            const duration = 200;
 
             function animate(time) {
                 let progress = (time - startTime) / duration;
@@ -582,10 +583,9 @@
             possibleMoves = [];
 
             if (moveDetails.type === 'capture') {
-                // Remove captured piece
                 pieces = pieces.filter(p => p.nodeId !== moveDetails.captureTarget);
                 
-                // Check if this piece can capture AGAIN
+                // Cek makan berantai (Multi-jump)
                 const nextMoves = getValidMoves(piece);
                 const nextCaptures = nextMoves.filter(m => m.type === 'capture');
                 
@@ -594,10 +594,9 @@
                     selectedPiece = piece;
                     possibleMoves = nextCaptures;
                     isAnimating = false;
-                    showToast("Makan lagi!", 1000);
+                    showToast("Lanjut Makan!", 1000);
                     updateUI();
                     
-                    // If Bot is playing, schedule next jump
                     if (gameMode === 'bot' && currentPlayer === 2) {
                         setTimeout(playBot, 500);
                     }
@@ -611,7 +610,6 @@
         }
 
         function endTurn() {
-            // Check win condition
             const p1Count = pieces.filter(p => p.player === 1).length;
             const p2Count = pieces.filter(p => p.player === 2).length;
 
@@ -620,11 +618,21 @@
                 return;
             }
 
-            // Switch Turn
+            // Cek kondisi mati langkah
+            let hasMovesP1 = pieces.some(p => p.player === 1 && getValidMoves(p).length > 0);
+            let hasMovesP2 = pieces.some(p => p.player === 2 && getValidMoves(p).length > 0);
+
+            if (!hasMovesP1 && currentPlayer === 2) {
+                handleWin(2); return;
+            }
+            if (!hasMovesP2 && currentPlayer === 1) {
+                handleWin(1); return;
+            }
+
             currentPlayer = currentPlayer === 1 ? 2 : 1;
             updateUI();
             
-            let turnText = currentPlayer === 1 ? "Giliran Player 1" : (gameMode === 'bot' ? "Bot Berpikir..." : "Giliran Player 2");
+            let turnText = currentPlayer === 1 ? "Giliran Pemain 1" : (gameMode === 'bot' ? "Bot Berpikir..." : "Giliran Pemain 2");
             showToast(turnText, 1500);
 
             if (gameMode === 'bot' && currentPlayer === 2) {
@@ -634,7 +642,7 @@
 
         function handleWin(winnerPlayer) {
             SFX.win();
-            const winnerName = winnerPlayer === 1 ? "Player 1" : (gameMode === 'bot' ? "Bot" : "Player 2");
+            const winnerName = winnerPlayer === 1 ? "Pemain 1" : (gameMode === 'bot' ? "Bot" : "Pemain 2");
             showToast(`🎉 ${winnerName} MENANG! 🎉`, 5000);
             updateUI();
             setTimeout(() => {
@@ -673,12 +681,10 @@
             } else {
                 const allCaps = getAllCaptures(2);
                 if (allCaps.length > 0) {
-                    // MUST capture. Pick a random capture (could be made smarter to chain multi-jumps)
                     const choice = allCaps[Math.floor(Math.random() * allCaps.length)];
                     pieceToMove = choice.piece;
                     moveToMake = choice.move;
                 } else {
-                    // Normal move
                     let allNormalMoves = [];
                     pieces.filter(p => p.player === 2).forEach(p => {
                         getValidMoves(p).filter(m => m.type === 'normal').forEach(m => {
@@ -687,19 +693,17 @@
                     });
 
                     if (allNormalMoves.length === 0) {
-                        // Bot has no moves, player 1 wins!
                         handleWin(1);
                         return;
                     }
                     
-                    // Simple logic: prefer moving towards left (smaller c)
+                    // Prioritaskan bergerak ke kiri (menyerang)
                     allNormalMoves.sort((a, b) => {
                         const targetA = nodes.find(n => n.id === a.move.target);
                         const targetB = nodes.find(n => n.id === b.move.target);
                         return targetA.c - targetB.c; 
                     });
 
-                    // Add some randomness so bot isn't entirely predictable
                     let pool = allNormalMoves.slice(0, Math.max(1, Math.floor(allNormalMoves.length / 2)));
                     const choice = pool[Math.floor(Math.random() * pool.length)];
                     pieceToMove = choice.piece;
@@ -708,7 +712,7 @@
             }
 
             selectedPiece = pieceToMove;
-            possibleMoves = [moveToMake]; // Lock bot's choice
+            possibleMoves = [moveToMake];
             attemptMove(pieceToMove, nodes.find(n => n.id === moveToMake.target));
         }
 
@@ -716,6 +720,15 @@
             const w = canvas.width / (window.devicePixelRatio || 1);
             const h = canvas.height / (window.devicePixelRatio || 1);
             ctx.clearRect(0, 0, w, h);
+
+            // Perhitungan proporsional radius untuk layar kecil
+            const usableW = w - (w * 0.1);
+            const usableH = h - (h * 0.1);
+            const cellW = usableW / 8;
+            const cellH = usableH / 4;
+            // Radius Bidak & Titik merespon ukuran layar agar tak bertabrakan
+            const pieceRadius = Math.max(10, Math.min(cellW, cellH) * 0.35); 
+            const nodeRadius = pieceRadius * 0.3;
 
             // Draw Lines
             ctx.strokeStyle = C_LINE;
@@ -727,7 +740,6 @@
                 const start = getNodeCoords(n.c, n.r);
                 
                 n.neighbors.forEach(nid => {
-                    // Avoid drawing double lines by only drawing to higher IDs
                     if (nid > n.id) {
                         const endNode = nodes.find(x => x.id === nid);
                         const end = getNodeCoords(endNode.c, endNode.r);
@@ -739,67 +751,58 @@
                 });
             }
 
-            // Draw Nodes (Dots)
-            ctx.fillStyle = '#fde68a'; // Amber 200
+            // Draw Nodes
+            ctx.fillStyle = '#e2e8f0'; // Gray dot
             nodes.forEach(n => {
                 const pos = getNodeCoords(n.c, n.r);
                 ctx.beginPath();
-                ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+                ctx.arc(pos.x, pos.y, nodeRadius, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.stroke();
             });
 
-            // Draw Highlights for possible moves
+            // Draw Highlights
             if (possibleMoves.length > 0 && selectedPiece) {
                 possibleMoves.forEach(m => {
                     const tNode = nodes.find(n => n.id === m.target);
                     const pos = getNodeCoords(tNode.c, tNode.r);
                     ctx.beginPath();
-                    ctx.arc(pos.x, pos.y, 20, 0, Math.PI * 2);
+                    ctx.arc(pos.x, pos.y, pieceRadius * 0.9, 0, Math.PI * 2);
                     ctx.fillStyle = C_HIGHLIGHT;
                     ctx.fill();
                     
-                    // Draw mini inner dot
                     ctx.beginPath();
-                    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+                    ctx.arc(pos.x, pos.y, pieceRadius * 0.3, 0, Math.PI * 2);
                     ctx.fillStyle = '#fff';
                     ctx.fill();
                 });
             }
 
             // Draw Pieces
-            // Sort pieces so selected/animating piece draws on top
             let sortedPieces = [...pieces].sort((a, b) => (a === selectedPiece ? 1 : 0) - (b === selectedPiece ? 1 : 0));
 
             sortedPieces.forEach(p => {
                 const x = p.visualX;
                 const y = p.visualY;
-                const radius = 22;
 
-                // Selection glow
                 if (p === selectedPiece) {
                     ctx.shadowColor = p.player === 1 ? C_P1 : C_P2;
                     ctx.shadowBlur = 20;
                 } else if (p === mustContinueJumpPiece) {
-                    // Blinking glow for must continue
                     ctx.shadowColor = '#fbbf24';
                     ctx.shadowBlur = 15 + Math.sin(Date.now() / 100) * 5;
                 }
 
-                // Base shadow
                 ctx.shadowOffsetY = 4;
                 ctx.shadowColor = 'rgba(0,0,0,0.3)';
-                if(p === selectedPiece) ctx.shadowOffsetY = 8; // Lifted effect
+                if(p === selectedPiece) ctx.shadowOffsetY = 8; 
 
-                // Draw Piece Circle
                 ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.arc(x, y, pieceRadius, 0, Math.PI * 2);
                 
-                // Gradient for 3D look
-                let grd = ctx.createRadialGradient(x - 5, y - 5, 2, x, y, radius);
+                let grd = ctx.createRadialGradient(x - pieceRadius/3, y - pieceRadius/3, pieceRadius/5, x, y, pieceRadius);
                 if (p.player === 1) {
-                    grd.addColorStop(0, '#60a5fa');
-                    grd.addColorStop(1, '#2563eb');
+                    grd.addColorStop(0, '#38bdf8');
+                    grd.addColorStop(1, '#0284c7');
                 } else {
                     grd.addColorStop(0, '#f87171');
                     grd.addColorStop(1, '#dc2626');
@@ -807,21 +810,18 @@
                 ctx.fillStyle = grd;
                 ctx.fill();
 
-                // Inner rim
                 ctx.beginPath();
-                ctx.arc(x, y, radius - 4, 0, Math.PI * 2);
-                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.arc(x, y, pieceRadius * 0.8, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Reset shadow
                 ctx.shadowBlur = 0;
                 ctx.shadowOffsetY = 0;
                 
-                // Simple pattern on piece (Star/Crown hint)
                 ctx.fillStyle = 'rgba(255,255,255,0.4)';
                 ctx.beginPath();
-                ctx.arc(x, y, radius/3, 0, Math.PI*2);
+                ctx.arc(x, y, pieceRadius * 0.3, 0, Math.PI*2);
                 ctx.fill();
             });
 
