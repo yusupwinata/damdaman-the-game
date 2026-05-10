@@ -837,25 +837,38 @@
                 const x = p.visualX;
                 const y = p.visualY;
 
-                // Mengatur Glow dan Drop Shadow
+                let isGlowingTurn = !selectedPiece && p.player === currentPlayer && p !== mustContinueJumpPiece;
+                let pulse = (Math.sin(Date.now() / 150) + 1) / 2; // Normalisasi ke 0.0 - 1.0
+
+                // Tambahkan Ring/Halo fisik di belakang bidak agar glow jauh lebih terlihat (terang & besar)
+                if (isGlowingTurn) {
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetY = 0;
+                    ctx.beginPath();
+                    ctx.arc(x, y, pieceRadius * (1.3 + pulse * 0.5), 0, Math.PI * 2);
+                    ctx.fillStyle = p.player === 1 ? `rgba(56, 189, 248, ${0.5 - pulse * 0.3})` : `rgba(248, 113, 113, ${0.5 - pulse * 0.3})`;
+                    ctx.fill();
+                }
+
+                // Mengatur Glow dan Drop Shadow utama
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 0;
 
                 if (p === selectedPiece) {
-                    ctx.shadowColor = p.player === 1 ? C_P1 : C_P2;
-                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = p.player === 1 ? '#7dd3fc' : '#fca5a5';
+                    ctx.shadowBlur = 30;
                     ctx.shadowOffsetY = 8; // Float effect for selected piece
                 } else if (p === mustContinueJumpPiece) {
-                    ctx.shadowColor = '#fbbf24';
-                    ctx.shadowBlur = 15 + Math.sin(Date.now() / 100) * 5;
-                } else if (!selectedPiece && p.player === currentPlayer) {
-                    // Turn indicator glow berdenyut
-                    ctx.shadowColor = p.player === 1 ? C_P1 : C_P2;
-                    ctx.shadowBlur = 10 + Math.sin(Date.now() / 150) * 8;
+                    ctx.shadowColor = '#fde047';
+                    ctx.shadowBlur = 20 + pulse * 15;
+                } else if (isGlowingTurn) {
+                    // Turn indicator glow berdenyut - LEBIH TERANG DAN BESAR
+                    ctx.shadowColor = p.player === 1 ? '#38bdf8' : '#fb7185';
+                    ctx.shadowBlur = 35 + pulse * 25;
                 } else {
                     // Drop shadow statis normal untuk bidak lain
-                    ctx.shadowColor = 'rgba(0,0,0,0.4)';
-                    ctx.shadowBlur = 5;
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 6;
                     ctx.shadowOffsetY = 4;
                 }
 
