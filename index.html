@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Damdaman Seru!</title>
+    <!-- Tambahan Icon Website (Favicon) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -214,8 +216,14 @@
             select: () => playTone(600, 0.1, 0.1, 'triangle'),
             move: () => playTone(300, 0.15, 0.15, 'square', true),
             capture: () => {
-                playTone(150, 0.2, 0.3, 'sawtooth', true);
-                setTimeout(() => playTone(800, 0.1, 0.2, 'square'), 50);
+                // Intense drop for the captured piece
+                playTone(150, 0.15, 0.4, 'sawtooth', true);
+                
+                // Cheerful ascending notes for the capturer (Meriah)
+                setTimeout(() => playTone(523.25, 0.1, 0.2, 'square'), 50); // C5
+                setTimeout(() => playTone(659.25, 0.1, 0.2, 'square'), 100); // E5
+                setTimeout(() => playTone(783.99, 0.15, 0.2, 'square'), 150); // G5
+                setTimeout(() => playTone(1046.50, 0.3, 0.3, 'sine'), 250);  // C6 (Ting!)
             },
             damOraMangan: () => {
                 // Buzz sound
@@ -829,17 +837,27 @@
                 const x = p.visualX;
                 const y = p.visualY;
 
+                // Mengatur Glow dan Drop Shadow
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+
                 if (p === selectedPiece) {
                     ctx.shadowColor = p.player === 1 ? C_P1 : C_P2;
                     ctx.shadowBlur = 20;
+                    ctx.shadowOffsetY = 8; // Float effect for selected piece
                 } else if (p === mustContinueJumpPiece) {
                     ctx.shadowColor = '#fbbf24';
                     ctx.shadowBlur = 15 + Math.sin(Date.now() / 100) * 5;
+                } else if (!selectedPiece && p.player === currentPlayer) {
+                    // Turn indicator glow berdenyut
+                    ctx.shadowColor = p.player === 1 ? C_P1 : C_P2;
+                    ctx.shadowBlur = 10 + Math.sin(Date.now() / 150) * 8;
+                } else {
+                    // Drop shadow statis normal untuk bidak lain
+                    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                    ctx.shadowBlur = 5;
+                    ctx.shadowOffsetY = 4;
                 }
-
-                ctx.shadowOffsetY = 4;
-                ctx.shadowColor = 'rgba(0,0,0,0.3)';
-                if(p === selectedPiece) ctx.shadowOffsetY = 8; 
 
                 ctx.beginPath();
                 ctx.arc(x, y, pieceRadius, 0, Math.PI * 2);
@@ -855,14 +873,15 @@
                 ctx.fillStyle = grd;
                 ctx.fill();
 
+                // Bersihkan efek shadow sebelum menggambar detail atas agar rapi
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetY = 0;
+
                 ctx.beginPath();
                 ctx.arc(x, y, pieceRadius * 0.8, 0, Math.PI * 2);
                 ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                 ctx.lineWidth = 2;
                 ctx.stroke();
-
-                ctx.shadowBlur = 0;
-                ctx.shadowOffsetY = 0;
                 
                 ctx.fillStyle = 'rgba(255,255,255,0.4)';
                 ctx.beginPath();
