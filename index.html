@@ -252,6 +252,10 @@
         let isAnimating = false;
         let gameLoopId;
 
+        // Visual Effects Variables
+        let particles = [];
+        let animatingPiece = null;
+
         // Colors
         const C_LINE = '#cbd5e1'; // Light gray lines to match the image
         const C_P1 = '#0ea5e9'; // Light blue
@@ -281,6 +285,31 @@
             }, duration);
         }
 
+        // Particle Explosion System
+        function createExplosion(x, y, player) {
+            const isP1 = player === 1;
+            const baseColor = isP1 ? [14, 165, 233] : [255, 0, 0]; // RGB color for particles
+            
+            for (let i = 0; i < 30; i++) {
+                // Mix of main color and greyish smoke
+                const isSmoke = Math.random() > 0.5;
+                const r = isSmoke ? 200 + Math.random() * 55 : baseColor[0];
+                const g = isSmoke ? 200 + Math.random() * 55 : baseColor[1];
+                const b = isSmoke ? 200 + Math.random() * 55 : baseColor[2];
+                
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.5) * 12 - 2, // Slight upward drift
+                    life: 1.0,
+                    decay: Math.random() * 0.04 + 0.02,
+                    color: `rgb(${r}, ${g}, ${b})`,
+                    size: Math.random() * 12 + 4
+                });
+            }
+        }
+
         function startGame(mode) {
             initAudio();
             gameMode = mode;
@@ -301,6 +330,8 @@
             selectedPiece = null;
             mustContinueJumpPiece = null;
             isAnimating = false;
+            particles = [];
+            animatingPiece = null;
             updateUI();
             showToast("Game Mulai! Giliran Pemain 1");
 
@@ -539,6 +570,14 @@
                     showToast("DAM ORA MANGAN! 🚨<br><span class='text-sm font-normal'>Bidakmu yang lupa makan dihukum mati!</span>", 3500);
                     
                     const guiltyPieceIds = [...new Set(allCaps.map(c => c.piece.id))];
+                    
+                    // Create explosion at the pieces being punished
+                    pieces.forEach(p => {
+                        if (guiltyPieceIds.includes(p.id)) {
+                            createExplosion(p.visualX, p.visualY, p.player);
+                        }
+                    });
+
                     pieces = pieces.filter(p => !guiltyPieceIds.includes(p.id));
                     
                     executeMoveAnimation(piece, targetNode, move, true);
@@ -551,6 +590,7 @@
 
         function executeMoveAnimation(piece, targetNode, moveDetails, wasDamPunished) {
             isAnimating = true;
+            animatingPiece = piece; // Set hand animation target
             const targetCoords = getNodeCoords(targetNode.c, targetNode.r);
             
             if (moveDetails.type === 'capture') SFX.capture();
@@ -559,7 +599,7 @@
             const startTime = performance.now();
             const startX = piece.visualX;
             const startY = piece.visualY;
-            const duration = 200;
+            const duration = 250; // Slightly slower for better hand visual
 
             function animate(time) {
                 let progress = (time - startTime) / duration;
@@ -580,9 +620,14 @@
         function finalizeMove(piece, targetNode, moveDetails, wasDamPunished) {
             piece.nodeId = targetNode.id;
             selectedPiece = null;
+            animatingPiece = null; // Remove hand animation
             possibleMoves = [];
 
             if (moveDetails.type === 'capture') {
+                const capturedPiece = getPieceAt(moveDetails.captureTarget);
+                if(capturedPiece) {
+                    createExplosion(capturedPiece.visualX, capturedPiece.visualY, capturedPiece.player);
+                }
                 pieces = pieces.filter(p => p.nodeId !== moveDetails.captureTarget);
                 
                 // Cek makan berantai (Multi-jump)
@@ -824,6 +869,38 @@
                 ctx.arc(x, y, pieceRadius * 0.3, 0, Math.PI*2);
                 ctx.fill();
             });
+
+            // Draw Particles (Smoke & Explosion)
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= p.decay;
+
+                // Add slight friction
+                p.vx *= 0.95;
+                p.vy *= 0.95;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.globalAlpha = 1.0; // Reset global alpha
+
+            // Draw Hand Animation
+            if (animatingPiece) {
+                ctx.font = `${pieceRadius * 2.5}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // Render hand slightly offset to simulate "dragging"
+                ctx.fillText('👆', animatingPiece.visualX + pieceRadius * 0.6, animatingPiece.visualY + pieceRadius * 1.2);
+            }
 
             gameLoopId = requestAnimationFrame(renderLoop);
         }
